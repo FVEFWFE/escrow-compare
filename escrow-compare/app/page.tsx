@@ -9,7 +9,7 @@ export const revalidate = 60 // Revalidate every minute
 
 export default async function HomePage() {
   // Fetch top services
-  const services = await prisma.escrowService.findMany({
+  const rawServices = await prisma.escrowService.findMany({
     orderBy: { trustScore: 'desc' },
     take: 6,
     include: {
@@ -18,6 +18,16 @@ export default async function HomePage() {
       },
     },
   })
+
+  // Parse JSON strings for each service
+  const services = rawServices.map(service => ({
+    ...service,
+    fees: typeof service.fees === 'string' ? JSON.parse(service.fees) : service.fees,
+    currencies: typeof service.currencies === 'string' ? JSON.parse(service.currencies) : service.currencies,
+    languages: typeof service.languages === 'string' ? JSON.parse(service.languages) : service.languages,
+    jurisdictions: typeof service.jurisdictions === 'string' ? JSON.parse(service.jurisdictions) : service.jurisdictions,
+    features: typeof service.features === 'string' ? JSON.parse(service.features) : service.features,
+  }))
 
   // Calculate metrics
   const [totalServices, totalReviews, latestMarketData] = await Promise.all([

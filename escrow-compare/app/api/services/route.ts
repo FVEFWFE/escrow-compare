@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCachedData, setCachedData } from '@/lib/redis'
 import { z } from 'zod'
 
 const querySchema = z.object({
@@ -20,13 +19,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const params = querySchema.parse(Object.fromEntries(searchParams))
 
-    // Try to get from cache
-    const cacheKey = `services:${JSON.stringify(params)}`
-    const cached = await getCachedData(cacheKey)
-    if (cached) {
-      return NextResponse.json(cached)
-    }
-
     // Build where clause
     const where: any = {}
     
@@ -44,9 +36,9 @@ export async function GET(request: NextRequest) {
     
     if (params.search) {
       where.OR = [
-        { name: { contains: params.search, mode: 'insensitive' } },
-        { description: { contains: params.search, mode: 'insensitive' } },
-        { headquarters: { contains: params.search, mode: 'insensitive' } },
+        { name: { contains: params.search } },
+        { description: { contains: params.search } },
+        { headquarters: { contains: params.search } },
       ]
     }
 
@@ -64,7 +56,7 @@ export async function GET(request: NextRequest) {
           where.apiAvailable = true
           break
         case 'international':
-          where.jurisdictions = { hasSome: ['USA', 'EU', 'UK', 'Asia'] }
+          // For SQLite, we can't use array operations, so we'll filter in memory
           break
       }
     }
@@ -91,26 +83,42 @@ export async function GET(request: NextRequest) {
       prisma.escrowService.count({ where }),
     ])
 
-    // Calculate average ratings
-    const servicesWithRatings = services.map(service => ({
-      ...service,
-      avgRating: service.reviews.length
-        ? service.reviews.reduce((sum, r) => sum + r.rating, 0) / service.reviews.length
-        : 0,
-      reviewCount: service.reviews.length,
-      currentMetrics: service.metrics[0] || null,
-    }))
+    // Parse JSON strings and calculate average ratings
+    const servicesWithParsedData = services.map(service => {
+      // Parse JSON strings
+      const parsedService = {
+        ...service,
+        fees: typeof service.fees === 'string' ? JSON.parse(service.fees) : service.fees,
+        currencies: typeof service.currencies === 'string' ? JSON.parse(service.currencies) : service.currencies,
+        languages: typeof service.languages === 'string' ? JSON.parse(service.languages) : service.languages,
+        jurisdictions: typeof service.jurisdictions === 'string' ? JSON.parse(service.jurisdictions) : service.jurisdictions,
+        features: typeof service.features === 'string' ? JSON.parse(service.features) : service.features,
+        avgRating: service.reviews.length
+          ? service.reviews.reduce((sum, r) => sum + r.rating, 0) / service.reviews.length
+          : 0,
+        reviewCount: service.reviews.length,
+        currentMetrics: service.metrics[0] || null,
+      }
+
+      // Apply international filter if needed
+      if (params.filter === 'international') {
+        const jurisdictions = parsedService.jurisdictions
+        const hasInternational = jurisdictions.some((j: string) => 
+          ['USA', 'EU', 'UK', 'Asia'].includes(j)
+        )
+        if (!hasInternational) return null
+      }
+
+      return parsedService
+    }).filter(Boolean)
 
     const response = {
-      services: servicesWithRatings,
+      services: servicesWithParsedData,
       total,
       limit: params.limit,
       offset: params.offset,
       hasMore: params.offset + params.limit < total,
     }
-
-    // Cache the response
-    await setCachedData(cacheKey, response, 60) // Cache for 1 minute
 
     return NextResponse.json(response)
   } catch (error) {

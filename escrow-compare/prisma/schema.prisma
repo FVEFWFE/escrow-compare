@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -18,10 +18,10 @@ model EscrowService {
   logo              String
   foundedYear       Int
   headquarters      String
-  description       String          @db.Text
+  description       String
   trustScore        Float
-  fees              Json            // Complex fee structure
-  currencies        String[]
+  fees              String          // JSON stored as string for SQLite
+  currencies        String          // JSON array stored as string
   minTransaction    Float
   maxTransaction    Float?
   avgResponseTime   Int             // minutes
@@ -31,9 +31,9 @@ model EscrowService {
   cryptoSupported   Boolean
   verificationLevel String
   insuranceAmount   Float?
-  languages         String[]
-  jurisdictions     String[]
-  features          String[]
+  languages         String          // JSON array stored as string
+  jurisdictions     String          // JSON array stored as string
+  features          String          // JSON array stored as string
   badge             String?         // Special badges like "Rising Star"
   marketShare       Float           @default(0)
   totalVolume       Float           @default(0)
@@ -41,7 +41,7 @@ model EscrowService {
   metrics           ServiceMetric[]
   reviews           Review[]
   priceHistory      PricePoint[]
-  comparisons       Comparison[]    @relation("ComparedServices")
+  comparisons       ComparisonService[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -70,9 +70,9 @@ model Review {
   service    EscrowService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   rating     Int           // 1-5
   title      String
-  comment    String        @db.Text
-  pros       String[]
-  cons       String[]
+  comment    String
+  pros       String        // JSON array stored as string
+  cons       String        // JSON array stored as string
   verified   Boolean       @default(false)
   author     String
   role       String?       // buyer, seller, business
@@ -101,26 +101,36 @@ model PricePoint {
 }
 
 model Comparison {
-  id          String          @id @default(cuid())
+  id          String              @id @default(cuid())
   sessionId   String?
-  services    EscrowService[] @relation("ComparedServices")
-  parameters  Json            // Comparison parameters
-  result      Json?           // Cached comparison result
-  createdAt   DateTime        @default(now())
+  services    ComparisonService[]
+  parameters  String              // JSON stored as string
+  result      String?             // JSON stored as string
+  createdAt   DateTime            @default(now())
 
   @@index([sessionId])
   @@index([createdAt])
+}
+
+model ComparisonService {
+  id           String        @id @default(cuid())
+  comparisonId String
+  serviceId    String
+  comparison   Comparison    @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  service      EscrowService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([comparisonId, serviceId])
 }
 
 model FeeCalculation {
   id            String   @id @default(cuid())
   amount        Float
   currency      String
-  serviceIds    String[]
+  serviceIds    String   // JSON array stored as string
   fromCountry   String?
   toCountry     String?
   transactionType String?
-  results       Json     // Calculation results for each service
+  results       String   // JSON stored as string
   createdAt     DateTime @default(now())
 
   @@index([createdAt])
@@ -130,7 +140,7 @@ model TrustScoreHistory {
   id        String   @id @default(cuid())
   serviceId String
   score     Float
-  breakdown Json     // Detailed score breakdown
+  breakdown String   // JSON stored as string
   timestamp DateTime @default(now())
 
   @@index([serviceId, timestamp])
@@ -142,8 +152,8 @@ model MarketData {
   totalVolume Float
   totalTransactions Int
   avgTransactionSize Float
-  topServices Json   // Top services by volume
-  trends    Json     // Market trends data
+  topServices String  // JSON stored as string
+  trends    String    // JSON stored as string
 
   @@index([date])
 }
