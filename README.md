@@ -4,11 +4,21 @@ A modern Next.js application built with React 19, TypeScript, and Tailwind CSS.
 
 ## 🚀 One-Click Deploy
 
-Deploy this application instantly to Vercel with zero configuration:
+Deploy this application instantly with zero configuration:
 
+### Option 1: Netlify (Recommended if Vercel is down)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/FVEFWFE/escrow-compare)
+
+### Option 2: Railway
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/deploy?template=https://github.com/FVEFWFE/escrow-compare)
+
+### Option 3: Vercel
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/FVEFWFE/escrow-compare&project-name=escrow-compare&repository-name=escrow-compare)
 
-**👆 Click the button above to deploy immediately!**
+### Option 4: Render
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/FVEFWFE/escrow-compare)
+
+**👆 Click any button above to deploy immediately!**
 
 ## 🎯 Features
 
