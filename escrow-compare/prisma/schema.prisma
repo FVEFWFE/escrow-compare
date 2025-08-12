@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EscrowService {
+  id                String          @id @default(cuid())
+  name              String          @unique
+  slug              String          @unique
+  website           String
+  logo              String
+  foundedYear       Int
+  headquarters      String
+  description       String          @db.Text
+  trustScore        Float
+  fees              Json            // Complex fee structure
+  currencies        String[]
+  minTransaction    Float
+  maxTransaction    Float?
+  avgResponseTime   Int             // minutes
+  disputeWinRate    Float
+  apiAvailable      Boolean
+  instantTransfer   Boolean
+  cryptoSupported   Boolean
+  verificationLevel String
+  insuranceAmount   Float?
+  languages         String[]
+  jurisdictions     String[]
+  features          String[]
+  badge             String?         // Special badges like "Rising Star"
+  marketShare       Float           @default(0)
+  totalVolume       Float           @default(0)
+  activeUsers       Int             @default(0)
+  metrics           ServiceMetric[]
+  reviews           Review[]
+  priceHistory      PricePoint[]
+  comparisons       Comparison[]    @relation("ComparedServices")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([trustScore])
+  @@index([slug])
+}
+
+model ServiceMetric {
+  id            String        @id @default(cuid())
+  serviceId     String
+  service       EscrowService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  timestamp     DateTime      @default(now())
+  responseTime  Int           // minutes
+  uptime        Float         // percentage
+  activeUsers   Int
+  volume        Float         // USD
+  transactions  Int
+  successRate   Float
+
+  @@index([serviceId, timestamp])
+}
+
+model Review {
+  id         String        @id @default(cuid())
+  serviceId  String
+  service    EscrowService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  rating     Int           // 1-5
+  title      String
+  comment    String        @db.Text
+  pros       String[]
+  cons       String[]
+  verified   Boolean       @default(false)
+  author     String
+  role       String?       // buyer, seller, business
+  location   String?
+  date       DateTime      @default(now())
+  helpful    Int           @default(0)
+  unhelpful  Int           @default(0)
+
+  @@index([serviceId, rating])
+  @@index([date])
+}
+
+model PricePoint {
+  id              String        @id @default(cuid())
+  serviceId       String
+  service         EscrowService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  timestamp       DateTime      @default(now())
+  baseFee         Float
+  percentageFee   Float
+  minFee          Float?
+  maxFee          Float?
+  internationalFee Float?
+  cryptoFee       Float?
+
+  @@index([serviceId, timestamp])
+}
+
+model Comparison {
+  id          String          @id @default(cuid())
+  sessionId   String?
+  services    EscrowService[] @relation("ComparedServices")
+  parameters  Json            // Comparison parameters
+  result      Json?           // Cached comparison result
+  createdAt   DateTime        @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model FeeCalculation {
+  id            String   @id @default(cuid())
+  amount        Float
+  currency      String
+  serviceIds    String[]
+  fromCountry   String?
+  toCountry     String?
+  transactionType String?
+  results       Json     // Calculation results for each service
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model TrustScoreHistory {
+  id        String   @id @default(cuid())
+  serviceId String
+  score     Float
+  breakdown Json     // Detailed score breakdown
+  timestamp DateTime @default(now())
+
+  @@index([serviceId, timestamp])
+}
+
+model MarketData {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  totalVolume Float
+  totalTransactions Int
+  avgTransactionSize Float
+  topServices Json   // Top services by volume
+  trends    Json     // Market trends data
+
+  @@index([date])
+}
