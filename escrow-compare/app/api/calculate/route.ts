@@ -121,16 +121,16 @@ export async function POST(request: NextRequest) {
       savingsPercentage: Math.round(((maxFee - result.totalFee) / maxFee) * 100),
     }))
 
-    // Save calculation to database for analytics
+    // Save calculation for analytics
     await prisma.feeCalculation.create({
       data: {
         amount: amountInUSD,
         currency: params.currency,
-        serviceIds: services.map(s => s.id),
+        serviceIds: JSON.stringify(services.map(s => s.id)),
         fromCountry: params.fromCountry,
         toCountry: params.toCountry,
         transactionType: params.transactionType,
-        results: resultsWithSavings,
+        results: JSON.stringify(results),
       },
     })
 
