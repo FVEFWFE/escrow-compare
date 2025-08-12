@@ -5,7 +5,7 @@
 
 # next.js
 /.next/
-/out/
+# /out/ - commented out to include built files for deployment
 
 # production
 /build
